@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ECG Monitor Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: #fff;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      h1 {
+        font-size: 28px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .heart-icon {
+        font-size: 32px;
+        animation: pulse 1s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+      }
+
+      .status-badge {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .status-connected {
+        background: #00c853;
+        color: #fff;
+      }
+
+      .status-disconnected {
+        background: #ff5252;
+        color: #fff;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+      }
+
+      @media (max-width: 1024px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 24px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .card-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #fff;
+      }
+
+      .ecg-container {
+        position: relative;
+        height: 300px;
+      }
+
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .metric-card {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .metric-value {
+        font-size: 48px;
+        font-weight: 700;
+        color: #00e676;
+        line-height: 1.2;
+      }
+
+      .metric-value.warning {
+        color: #ffab00;
+      }
+
+      .metric-value.danger {
+        color: #ff5252;
+      }
+
+      .metric-label {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.6);
+        margin-top: 8px;
+      }
+
+      .metric-unit {
+        font-size: 20px;
+        font-weight: 400;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .peaks-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .peak-badge {
+        text-align: center;
+        padding: 12px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .peak-letter {
+        font-size: 24px;
+        font-weight: 700;
+      }
+
+      .peak-p {
+        color: #ff9800;
+      }
+      .peak-q {
+        color: #2196f3;
+      }
+      .peak-r {
+        color: #f44336;
+      }
+      .peak-s {
+        color: #9c27b0;
+      }
+      .peak-t {
+        color: #4caf50;
+      }
+
+      .peak-count {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.5);
+        margin-top: 4px;
+      }
+
+      .diagnosis-card {
+        margin-top: 20px;
+      }
+
+      .diagnosis-text {
+        font-size: 16px;
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.9);
+        padding: 16px;
+        background: rgba(0, 230, 118, 0.1);
+        border-radius: 8px;
+        border-left: 4px solid #00e676;
+      }
+
+      .diagnosis-text.abnormal {
+        background: rgba(255, 82, 82, 0.1);
+        border-left-color: #ff5252;
+      }
+
+      .abnormalities-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .abnormality-tag {
+        padding: 6px 12px;
+        border-radius: 16px;
+        font-size: 13px;
+        background: rgba(0, 230, 118, 0.2);
+        color: #00e676;
+      }
+
+      .abnormality-tag.warning {
+        background: rgba(255, 171, 0, 0.2);
+        color: #ffab00;
+      }
+
+      .abnormality-tag.danger {
+        background: rgba(255, 82, 82, 0.2);
+        color: #ff5252;
+      }
+
+      .controls {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .btn {
+        padding: 12px 24px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background: #00e676;
+        color: #1a1a2e;
+      }
+
+      .btn-primary:hover {
+        background: #00c853;
+        transform: translateY(-2px);
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .timestamp {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.4);
+      }
+
+      .signal-info {
+        display: flex;
+        gap: 20px;
+        margin-top: 12px;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>
+          <span class="heart-icon">❤️</span>
+          ECG Monitor Dashboard
+        </h1>
+        <span id="connectionStatus" class="status-badge status-disconnected"
+          >Disconnected</span
+        >
+      </header>
+
+      <div class="grid">
+        <div class="left-column">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">ECG Waveform</span>
+              <span id="timestamp" class="timestamp">--</span>
+            </div>
+            <div class="ecg-container">
+              <canvas id="ecgChart"></canvas>
+            </div>
+            <div class="signal-info">
+              <span>Samples: <strong id="sampleCount">--</strong></span>
+              <span>Duration: <strong id="duration">--</strong>s</span>
+              <span>Beats: <strong id="beatCount">--</strong></span>
+            </div>
+            <div class="peaks-grid">
+              <div class="peak-badge">
+                <div class="peak-letter peak-p">P</div>
+                <div class="peak-count" id="pCount">0 peaks</div>
+              </div>
+              <div class="peak-badge">
+                <div class="peak-letter peak-q">Q</div>
+                <div class="peak-count" id="qCount">0 peaks</div>
+              </div>
+              <div class="peak-badge">
+                <div class="peak-letter peak-r">R</div>
+                <div class="peak-count" id="rCount">0 peaks</div>
+              </div>
+              <div class="peak-badge">
+                <div class="peak-letter peak-s">S</div>
+                <div class="peak-count" id="sCount">0 peaks</div>
+              </div>
+              <div class="peak-badge">
+                <div class="peak-letter peak-t">T</div>
+                <div class="peak-count" id="tCount">0 peaks</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card diagnosis-card">
+            <div class="card-header">
+              <span class="card-title">Analysis & Diagnosis</span>
+            </div>
+            <div id="abnormalities" class="abnormalities-list">
+              <span class="abnormality-tag">Waiting for data...</span>
+            </div>
+            <div id="diagnosis" class="diagnosis-text">
+              Connect to receive ECG data and view analysis results.
+            </div>
+          </div>
+        </div>
+
+        <div class="right-column">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Heart Rate</span>
+            </div>
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div id="heartRate" class="metric-value">--</div>
+                <div class="metric-label">
+                  BPM <span class="metric-unit">(beats per minute)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: 20px">
+            <div class="card-header">
+              <span class="card-title">ESP8266 Device</span>
+            </div>
+            <div style="margin-bottom: 12px">
+              <label style="font-size: 14px; color: rgba(255, 255, 255, 0.6)"
+                >Device IP:</label
+              >
+              <input
+                type="text"
+                id="espIp"
+                placeholder="192.168.1.100"
+                style="
+                  margin-top: 8px;
+                  width: 100%;
+                  padding: 10px;
+                  border-radius: 8px;
+                  background: rgba(255, 255, 255, 0.1);
+                  border: 1px solid rgba(255, 255, 255, 0.2);
+                  color: #fff;
+                "
+              />
+            </div>
+            <div class="controls">
+              <button id="btnConnectESP" class="btn btn-primary">
+                Connect ESP
+              </button>
+              <button id="btnDisconnectESP" class="btn btn-secondary" disabled>
+                Stop
+              </button>
+            </div>
+            <div
+              id="espStatus"
+              style="
+                margin-top: 12px;
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.5);
+              "
+            >
+              Buffer: <span id="bufferCount">0</span> samples | Status:
+              <span id="espConnStatus">Idle</span>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: 20px">
+            <div class="card-header">
+              <span class="card-title">Simulation</span>
+            </div>
+            <div class="controls">
+              <button id="btnSimulate" class="btn btn-primary">
+                Simulate ECG
+              </button>
+              <button id="btnClear" class="btn btn-secondary">Clear</button>
+            </div>
+            <div style="margin-top: 16px">
+              <label style="font-size: 14px; color: rgba(255, 255, 255, 0.6)">
+                Simulation Type:
+              </label>
+              <select
+                id="simType"
+                style="
+                  margin-top: 8px;
+                  width: 100%;
+                  padding: 10px;
+                  border-radius: 8px;
+                  background: rgba(255, 255, 255, 0.1);
+                  border: 1px solid rgba(255, 255, 255, 0.2);
+                  color: #fff;
+                "
+              >
+                <option value="normal">Normal Rhythm (70-75 BPM)</option>
+                <option value="bradycardia">Bradycardia (~45 BPM)</option>
+                <option value="tachycardia">Tachycardia (~120 BPM)</option>
+                <option value="irregular">Irregular Rhythm</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ============ Chart Setup ============
+      const ctx = document.getElementById("ecgChart").getContext("2d");
+
+      const ecgChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "ECG",
+              data: [],
+              borderColor: "#00e676",
+              borderWidth: 1.5,
+              fill: false,
+              tension: 0.1,
+              pointRadius: 0,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: {
+            legend: { display: false },
+          },
+          scales: {
+            x: {
+              display: false,
+            },
+            y: {
+              grid: {
+                color: "rgba(255,255,255,0.1)",
+              },
+              ticks: {
+                color: "rgba(255,255,255,0.5)",
+              },
+            },
+          },
+        },
+      });
+
+      // ============ WebSocket Connection ============
+      let ws = null;
+
+      function connectWebSocket() {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+        ws.onopen = () => {
+          document.getElementById("connectionStatus").textContent = "Connected";
+          document.getElementById("connectionStatus").className =
+            "status-badge status-connected";
+        };
+
+        ws.onclose = () => {
+          document.getElementById("connectionStatus").textContent =
+            "Disconnected";
+          document.getElementById("connectionStatus").className =
+            "status-badge status-disconnected";
+          // Reconnect after 3 seconds
+          setTimeout(connectWebSocket, 3000);
+        };
+
+        ws.onmessage = (event) => {
+          const message = JSON.parse(event.data);
+          if (message.type === "analysis") {
+            updateDashboard(message.data);
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error("WebSocket error:", error);
+        };
+      }
+
+      connectWebSocket();
+
+      // ============ Dashboard Update ============
+      function updateDashboard(data) {
+        // Update timestamp
+        document.getElementById("timestamp").textContent =
+          new Date().toLocaleTimeString();
+
+        // Update ECG chart
+        if (data.ecg_signal && data.ecg_signal.length > 0) {
+          const labels = data.ecg_signal.map((_, i) => i);
+          ecgChart.data.labels = labels;
+          ecgChart.data.datasets[0].data = data.ecg_signal;
+          ecgChart.update("none");
+        }
+
+        // Update heart rate with color coding
+        const hrElement = document.getElementById("heartRate");
+        hrElement.textContent = data.heart_rate || "--";
+        hrElement.className = "metric-value";
+        if (data.heart_rate < 60 || data.heart_rate > 100) {
+          hrElement.classList.add(
+            data.heart_rate < 50 || data.heart_rate > 120 ? "danger" : "warning"
+          );
+        }
+
+        // Update signal info
+        document.getElementById("sampleCount").textContent = data.ecg_signal
+          ? data.ecg_signal.length
+          : "--";
+        document.getElementById("duration").textContent =
+          data.duration_seconds || "--";
+        document.getElementById("beatCount").textContent =
+          data.num_beats || "--";
+
+        // Update peak counts
+        document.getElementById("pCount").textContent = `${
+          (data.p_peaks || []).length
+        } peaks`;
+        document.getElementById("qCount").textContent = `${
+          (data.q_peaks || []).length
+        } peaks`;
+        document.getElementById("rCount").textContent = `${
+          (data.r_peaks || []).length
+        } peaks`;
+        document.getElementById("sCount").textContent = `${
+          (data.s_peaks || []).length
+        } peaks`;
+        document.getElementById("tCount").textContent = `${
+          (data.t_peaks || []).length
+        } peaks`;
+
+        // Update abnormalities
+        const abnormalitiesContainer = document.getElementById("abnormalities");
+        abnormalitiesContainer.innerHTML = "";
+        (data.abnormalities || []).forEach((abnormality) => {
+          const tag = document.createElement("span");
+          tag.className = "abnormality-tag";
+          if (
+            abnormality.includes("Severe") ||
+            abnormality.includes("Fibrillation")
+          ) {
+            tag.classList.add("danger");
+          } else if (
+            abnormality.includes("Bradycardia") ||
+            abnormality.includes("Tachycardia") ||
+            abnormality.includes("Irregular")
+          ) {
+            tag.classList.add("warning");
+          }
+          tag.textContent = abnormality;
+          abnormalitiesContainer.appendChild(tag);
+        });
+
+        // Update diagnosis
+        const diagnosisElement = document.getElementById("diagnosis");
+        diagnosisElement.textContent =
+          data.final_diagnosis || "No diagnosis available.";
+        diagnosisElement.className = "diagnosis-text";
+        if (
+          data.abnormalities &&
+          !data.abnormalities.some((a) => a.includes("Normal"))
+        ) {
+          diagnosisElement.classList.add("abnormal");
+        }
+      }
+
+      // ============ Synthetic ECG Generator ============
+      function generateSyntheticECG(
+        durationSeconds,
+        samplingRate,
+        heartRate,
+        irregular = false
+      ) {
+        const numSamples = Math.floor(durationSeconds * samplingRate);
+        const ecg = new Array(numSamples).fill(0);
+        const beatPeriod = 60.0 / heartRate;
+
+        const beatTimes = [];
+        if (irregular) {
+          let currentTime = 0;
+          while (currentTime < durationSeconds) {
+            beatTimes.push(currentTime);
+            currentTime += 0.5 + Math.random() * 0.7;
+          }
+        } else {
+          for (let t = 0; t < durationSeconds; t += beatPeriod) {
+            beatTimes.push(t);
+          }
+        }
+
+        beatTimes.forEach((beatTime) => {
+          for (let i = 0; i < numSamples; i++) {
+            const t = i / samplingRate - beatTime;
+            // P wave
+            ecg[i] += 0.15 * Math.exp(-(t * t) / (2 * 0.01 * 0.01));
+            // Q wave
+            ecg[i] -=
+              0.1 * Math.exp(-((t - 0.12) * (t - 0.12)) / (2 * 0.005 * 0.005));
+            // R wave
+            ecg[i] +=
+              1.0 * Math.exp(-((t - 0.15) * (t - 0.15)) / (2 * 0.008 * 0.008));
+            // S wave
+            ecg[i] -=
+              0.2 * Math.exp(-((t - 0.18) * (t - 0.18)) / (2 * 0.008 * 0.008));
+            // T wave
+            ecg[i] +=
+              0.3 * Math.exp(-((t - 0.35) * (t - 0.35)) / (2 * 0.03 * 0.03));
+          }
+        });
+
+        // Add noise
+        for (let i = 0; i < numSamples; i++) {
+          ecg[i] += (Math.random() - 0.5) * 0.04;
+        }
+
+        return ecg;
+      }
+
+      // ============ Controls ============
+      document.getElementById("btnSimulate").addEventListener("click", () => {
+        const simType = document.getElementById("simType").value;
+        let ecg;
+
+        switch (simType) {
+          case "bradycardia":
+            ecg = generateSyntheticECG(5, 250, 45);
+            break;
+          case "tachycardia":
+            ecg = generateSyntheticECG(5, 250, 120);
+            break;
+          case "irregular":
+            ecg = generateSyntheticECG(5, 250, 70, true);
+            break;
+          default:
+            ecg = generateSyntheticECG(5, 250, 72);
+        }
+
+        // Send via REST API (which will broadcast to WebSocket)
+        fetch("/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ecg: ecg, sampling_rate: 250 }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Analysis received:", data);
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      });
+
+      document.getElementById("btnClear").addEventListener("click", () => {
+        ecgChart.data.labels = [];
+        ecgChart.data.datasets[0].data = [];
+        ecgChart.update();
+
+        document.getElementById("heartRate").textContent = "--";
+        document.getElementById("heartRate").className = "metric-value";
+        document.getElementById("sampleCount").textContent = "--";
+        document.getElementById("duration").textContent = "--";
+        document.getElementById("beatCount").textContent = "--";
+        document.getElementById("pCount").textContent = "0 peaks";
+        document.getElementById("qCount").textContent = "0 peaks";
+        document.getElementById("rCount").textContent = "0 peaks";
+        document.getElementById("sCount").textContent = "0 peaks";
+        document.getElementById("tCount").textContent = "0 peaks";
+        document.getElementById("abnormalities").innerHTML =
+          '<span class="abnormality-tag">Waiting for data...</span>';
+        document.getElementById("diagnosis").textContent =
+          "Connect to receive ECG data and view analysis results.";
+        document.getElementById("diagnosis").className = "diagnosis-text";
+      });
+
+      // ============ ESP8266 Connection ============
+      let espBuffer = [];
+      let espFetchInterval = null;
+      let espAnalyzeInterval = null;
+      const BUFFER_SIZE = 625; // ~5 seconds at 12.5 samples/sec (80ms interval)
+      const ANALYZE_INTERVAL = 5000; // Analyze every 5 seconds
+      const FETCH_INTERVAL = 80; // Match ESP's 80ms interval
+
+      function updateBufferDisplay() {
+        document.getElementById("bufferCount").textContent = espBuffer.length;
+      }
+
+      function setEspStatus(status) {
+        document.getElementById("espConnStatus").textContent = status;
+      }
+
+      async function fetchFromESP(ip) {
+        try {
+          const response = await fetch(`http://${ip}/ecg`, { mode: "cors" });
+          const text = await response.text();
+          const val = parseInt(text);
+          if (!isNaN(val)) {
+            // Normalize: ESP reads 0-1023, convert to ~-1 to 1 range
+            const normalized = (val - 512) / 512;
+            espBuffer.push(normalized);
+            // Keep buffer from growing too large
+            if (espBuffer.length > BUFFER_SIZE * 2) {
+              espBuffer = espBuffer.slice(-BUFFER_SIZE);
+            }
+            updateBufferDisplay();
+          }
+        } catch (err) {
+          console.error("ESP fetch error:", err);
+        }
+      }
+
+      async function analyzeBuffer() {
+        if (espBuffer.length < 50) {
+          setEspStatus("Buffering...");
+          return;
+        }
+
+        setEspStatus("Analyzing...");
+
+        // Take current buffer for analysis
+        const dataToAnalyze = [...espBuffer];
+
+        try {
+          const response = await fetch("/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            // ESP samples at ~12.5 Hz (80ms), so sampling_rate = 12
+            body: JSON.stringify({ ecg: dataToAnalyze, sampling_rate: 12 }),
+          });
+          const result = await response.json();
+          console.log("ESP Analysis:", result);
+          setEspStatus("Connected");
+
+          // Clear buffer after analysis
+          espBuffer = [];
+          updateBufferDisplay();
+        } catch (err) {
+          console.error("Analyze error:", err);
+          setEspStatus("Error");
+        }
+      }
+
+      document.getElementById("btnConnectESP").addEventListener("click", () => {
+        const ip = document.getElementById("espIp").value.trim();
+        if (!ip) {
+          alert("Please enter ESP8266 IP address");
+          return;
+        }
+
+        // Clear previous
+        espBuffer = [];
+        updateBufferDisplay();
+        setEspStatus("Connecting...");
+
+        // Start fetching from ESP
+        espFetchInterval = setInterval(() => fetchFromESP(ip), FETCH_INTERVAL);
+
+        // Start periodic analysis
+        espAnalyzeInterval = setInterval(analyzeBuffer, ANALYZE_INTERVAL);
+
+        document.getElementById("btnConnectESP").disabled = true;
+        document.getElementById("btnDisconnectESP").disabled = false;
+        document.getElementById("espIp").disabled = true;
+
+        setEspStatus("Connected");
+      });
+
+      document
+        .getElementById("btnDisconnectESP")
+        .addEventListener("click", () => {
+          if (espFetchInterval) clearInterval(espFetchInterval);
+          if (espAnalyzeInterval) clearInterval(espAnalyzeInterval);
+          espFetchInterval = null;
+          espAnalyzeInterval = null;
+
+          document.getElementById("btnConnectESP").disabled = false;
+          document.getElementById("btnDisconnectESP").disabled = true;
+          document.getElementById("espIp").disabled = false;
+
+          setEspStatus("Idle");
+        });
+    </script>
+  </body>
+</html>
